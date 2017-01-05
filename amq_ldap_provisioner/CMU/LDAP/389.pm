@@ -41,6 +41,7 @@ sub getInstance {
 		CMU::CFG::readConfig('configuration.pl');
 
 		$_389->{_server}           = $CMU::CFG::_CFG{'389'}{'server'};
+		$_389->{_port}           = $CMU::CFG::_CFG{'389'}{'port'};
 		$_389->{_binddn}           = $CMU::CFG::_CFG{'389'}{'binddn'};
 		$_389->{_password}         = $CMU::CFG::_CFG{'389'}{'password'};
 		$_389->{_syncou}           = $CMU::CFG::_CFG{'389'}{'syncou'};
@@ -49,6 +50,7 @@ sub getInstance {
 		$_389->{_groupobjectclass} = $CMU::CFG::_CFG{'389'}{'groupobjectclass'};
 		$_389->{_personobjectclass} =
 		  $CMU::CFG::_CFG{'389'}{'personobjectclass'};
+		$_389->{_memberattribute}  = $CMU::CFG::_CFG{'389'}{'memberattribute'};
 		$_389->{_dnattribute}     = $CMU::CFG::_CFG{'389'}{'dnattribute'};
 		$_389->{_memberprefix}    = $CMU::CFG::_CFG{'389'}{'memberprefix'};
 		$_389->{_groupprefix}    = $CMU::CFG::_CFG{'389'}{'groupprefix'};
@@ -65,10 +67,20 @@ sub connect {
 
 	my ($self) = @_;
 	$log->debug("Calling CMU::LDAP::389::connect(self)");
+	$log->debug($self->{_server});
+	$log->debug($self->{_port});
+	$log->debug($self->{_binddn});
+	
+	
 
 	eval {
 		$self->{_ldap} =
-		  Net::LDAPS->new( $self->{_server}, port => $self->{_port} );
+		  	Net::LDAPS->new( $self->{_server}, port => $self->{_port} );
+			$log->debug("after LDAP call");
+			#my $mesg = $self->{_ldap}->start_tls();
+			#$log->debug("The result is: $mesg->code");
+			#$log->debug("At the end of eval");
+		
 	};
 
 	if ($@) {
@@ -320,14 +332,14 @@ sub createGroup {
 
 	if ( defined $description && $description ne '' ) {
 		$entry->add(
-			'objectClass' => [ 'top', 'groupOfNames' ],
+			'objectClass' => [ 'top', $self->{_groupobjectclass}, 'extensibleObject'],
 			'cn'          => $cn,
 			'description' => $description
 		);
 	}
 	else {
 		$entry->add(
-			'objectClass' => [ 'top', 'groupOfNames' ],
+			'objectClass' => [ 'top', $self->{_groupobjectclass} ],
 			'cn'          => $cn
 		);
 	}
@@ -358,6 +370,57 @@ sub createGroup {
 	return $result;
 }
 
+
+sub renameGroup {
+	my ( $self, $olddn, $groupName ) = @_;
+	$log->debug("Calling CMU::LDAP::389::renameGroup(self, $olddn, $groupName)");
+
+	my $newrdn = "cn=" . $groupName;
+	my $result;
+	my @attrs = ( $self->{_dnattribute} );
+	my $entry =
+	  $self->getLdapEntry( "(objectClass=" . $self->{_groupobjectclass} . ")",
+		\@attrs, $olddn );
+	$log->debug("in renameGroup. Right after getLdapEntry");
+	if ( defined $entry ) {
+		$log->debug("in renameGroup after defined entry. The entry is: " .  $entry->attributes . " " . $entry->changetype . " " . $entry->dn);
+		$entry->changetype( 'moddn' );
+		$log->debug("in renameGroup after defined entry added changetype. The entry is: " .  $entry->attributes . " " . $entry->changetype . " " . $entry->dn);
+		$entry->add ( 'newrdn' => "$newrdn" );
+		$log->debug("in renameGroup after defined entry added newrdn. The entry is: " .  $entry->attributes . " " . $entry->changetype . " " . $entry->dn);
+		$entry->add ( 'deleteoldrdn' => '1' );
+		$log->debug("in renameGroup after defined entry added deleteoldrdn. The entry is: " .  $entry->attributes . " " . $entry->changetype . " " . $entry->dn);
+
+		$result = $self->ldapUpdate($entry);
+
+		$log->debug("after ldapUpdate");
+		if ( $result->code ) {
+				$log->error(
+					    "CMU::LDAP::389::renameGroup returned with error name: "
+					  . ldap_error_name( $result->code )
+					  . ", error description: "
+					  . ldap_error_desc( $result->code )
+					  . ", changetype: "
+					  . $entry->changetype()
+					  . ", ldif: "
+					  . $entry->ldif() );
+				die();
+		}
+		else {
+			$log->info( "Renamed 389 group " . $olddn . " with " . $newrdn);
+		}
+	
+	}
+	else {
+		$log->info("Skipping renameGroup as ldapentry " . $olddn . " not found ");
+	}
+	
+
+	return $result;
+}
+
+
+
 sub getGroupDn {
 	my ( $self, $groupname ) = @_;
 	$log->debug("Calling CMU::LDAP::389::getGroupDn(self, $groupname)");
@@ -374,7 +437,7 @@ sub getMemberDnForUnresolvable {
 	my ( $self, $uid ) = @_;
 	$log->debug("Calling CMU::LDAP::389::getMemberDnForUnresolvable(self, $uid)");
 
-	my $dn =  $self->{_memberprefix} . $uid . "," . "OU=AndrewPerson," . $self->{_peoplebase};
+	my $dn =  $self->{_memberprefix} . $uid . ",ou=people," . $self->{_peoplebase};
 
 	$log->debug( "uid " . $uid . " converted to DN " . $dn );
 	return $dn;
@@ -385,7 +448,7 @@ sub constructMemberDnFromUid {
 	my ( $self, $uid ) = @_;
 	$log->debug("Calling CMU::LDAP::389::constructMemberDnFromUid(self, $uid)");
 
-	my $memberdn = join( "=", "uid", $uid . ",ou=AndrewPerson,dc=andrew,dc=cmu,dc=edu");
+	my $memberdn = join( "=", "uid", $uid . ",ou=people,dc=berkeley,dc=edu");
 
 	$log->debug( "uid " . $uid . " converted to DN " . $memberdn );
 	return $memberdn;
@@ -400,11 +463,16 @@ sub addIsMemberOf {
 	my @attrs = ("dn");
 	my $entry =
 	  $self->getLdapEntry(
-		"!(isMemberOf=" . escape_filter_value($groupdn) . ")",
+		"!(berkeleyEduIsMemberOf=" . escape_filter_value($groupdn) . ")",
 		\@attrs, $memberdn );
 
 	if ( defined $entry ) {
-		$entry->add( 'isMemberOf' => [$groupdn] );
+		$entry->add( 'berkeleyEduIsMemberOf' => [$groupdn] );
+		$log->debug("LDAP entry attributes:");
+		$log->debug($entry->attributes);
+		$log->debug($entry->dn);
+		$log->debug($entry->ldif);
+		
 
 		$result = $self->ldapUpdate($entry);
 
@@ -412,7 +480,7 @@ sub addIsMemberOf {
 			if ( ldap_error_name( $result->code ) eq
 				"LDAP_TYPE_OR_VALUE_EXISTS" )
 			{
-				$log->info( " isMemberOf " . $groupdn
+				$log->info( " berkeleyEduIsMemberOf " . $groupdn
 					  . " for uid "
 					  . $memberdn
 					  . " already exists" );
@@ -433,7 +501,7 @@ sub addIsMemberOf {
 		}
 		else {
 			$log->info(
-				"Added isMemberOf " . $groupdn . " for uid " . $memberdn );
+				"Added berkeleyEduIsMemberOf " . $groupdn . " for uid " . $memberdn );
 		}
 	}
 	else {
@@ -455,11 +523,11 @@ sub removeIsMemberOf {
 	my $result;
 	my @attrs = ("dn");
 	my $entry =
-	  $self->getLdapEntry( "(isMemberOf=" . escape_filter_value($groupdn) . ")",
+	  $self->getLdapEntry( "(berkeleyEduIsMemberOf=" . escape_filter_value($groupdn) . ")",
 		\@attrs, $memberdn );
 
 	if ( defined $entry ) {
-		$entry->delete( 'isMemberOf' => [$groupdn] );
+		$entry->delete( 'berkeleyEduIsMemberOf' => [$groupdn] );
 
 		my $result = $self->ldapUpdate($entry);
 
@@ -477,7 +545,7 @@ sub removeIsMemberOf {
 		}
 		else {
 			$log->info(
-				"Removed isMemberOf " . $groupdn . " for uid " . $memberdn );
+				"Removed berkeleyEduIsMemberOf " . $groupdn . " for uid " . $memberdn );
 		}
 	}
 	else {
@@ -502,9 +570,9 @@ sub getUidByIsMemberOf {
 
 	eval {
 		$result = $self->ldapSearch(
-			"&(isMemberOf="
+			"&(berkeleyEduIsMemberOf="
 			  . escape_filter_value($groupdn)
-			  . ")(objectClass=cmuAccountPerson)",
+			  . ")(objectClass=person)",
 			\@attrs, $self->{_peoplebase}
 		);
 
@@ -519,7 +587,7 @@ sub getUidByIsMemberOf {
 	}
 
 	$log->debug(
-		"Found " . $memberscount . " isMemberOf for group " . $groupdn );
+		"Found " . $memberscount . " berkeleyEduIsMemberOf for group " . $groupdn );
 	return @members;
 }
 

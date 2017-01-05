@@ -26,6 +26,7 @@ our %_CFG = (
 		'peoplebase' => 'OU=Users,DC=ad,DC=example,DC=edu',
 		'groupobjectclass'  => 'group',
 		'personobjectclass' => 'person',
+		'memberattribute'   => 'member'
 		'dnattribute'       => 'distinguishedName',
 		'memberprefix'      => 'cn=',
 		'groupprefix'       => 'cn='
@@ -39,8 +40,9 @@ our %_CFG = (
 		'password'   => 'xxxxxxxx',
 		'syncou'     => 'ou=groups,dc=example,dc=edu',
 		'peoplebase' => 'dc=example,dc=edu',
-		'groupobjectclass'  => 'groupOfNames',
-		'personobjectclass' => 'persaon',
+		'groupobjectclass'  => 'groupOfUniqueNames',
+		'personobjectclass' => 'person',
+		'memberattribute'   => 'uniquemember'
 		'dnattribute'       => 'entryDN',
 		'memberprefix'      => 'uid=',
 		'groupprefix'       => 'cn='

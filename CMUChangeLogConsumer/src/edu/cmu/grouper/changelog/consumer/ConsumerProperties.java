@@ -17,126 +17,133 @@ import java.lang.Exception;
 import java.net.URL;
 import java.util.Properties;
 
+//import edu.internet2.middleware.grouperClient.config.ConfigPropertiesCascadeBase;
+import edu.internet2.middleware.grouper.app.loader.GrouperLoaderConfig;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Act on member changes
  */
 public class ConsumerProperties {
 
-	private final static Log log = LogFactory.getLog(edu.cmu.grouper.changelog.consumer.ConsumerMain.class);
-
-	// the config file name
-	private static String configFile = "cmuconsumer.properties";
+	private static final Logger LOG = LoggerFactory.getLogger(edu.cmu.grouper.changelog.consumer.ConsumerMain.class);
 	
-	// indicates if we attempted to read the properties files
-	private static boolean didReadProperties = false;
-	
-	// indicates if we read all required properties from the file
-	private static boolean haveRequiredProperties = false;
-
+	//private final static Log log = LogFactory.getLog(edu.cmu.grouper.changelog.consumer.ConsumerMain.class);
+	private static final String PARAMETER_NAMESPACE = "changeLog.consumer.";
 	
 	private static String brokerURL = null;
 	private static String username = null;
 	private static String password = null;
 	private static String targets = null;
 	private static String usduExcludes = null;
-	
-	public static boolean propertiesOk() {
-		readProperties();
-		return haveRequiredProperties;
+	private static String allowLargeGroupsAttribute = null;
+	private static int maxMembers = 0;
+	private static String syncAttribute = null;
+	private static String syncType = null;
+	private static boolean useXmlMessageFormat = false;
+
+	public ConsumerProperties(String consumerName) {
+		
+		final String qualifiedParameterNamespace = PARAMETER_NAMESPACE + consumerName + ".";
+
+	    LOG.debug("CMU Consumer - Setting properties for {} consumer/provisioner.", consumerName);
+
+
+		try {
+			
+			brokerURL = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueStringRequired(qualifiedParameterNamespace + "brokerURL");
+					LOG.debug("CMU Consumer - Setting brokerURL to {}", brokerURL);
+			        
+			username = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueStringRequired(qualifiedParameterNamespace + "username");
+					LOG.debug("CMU Consumer - Setting username to {}", username);
+			        
+			password = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueString(qualifiedParameterNamespace + "password", "");
+					LOG.debug("CMU Consumer - Setting password to {}", password);
+			
+			targets = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueStringRequired(qualifiedParameterNamespace + "targets");
+					LOG.debug("CMU Consumer - Setting targets to {}", targets);
+			   
+			usduExcludes = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueString(qualifiedParameterNamespace + "usduExcludes", "");
+					LOG.debug("CMU Consumer - Setting usduExcludes to {}", usduExcludes);
+			
+			allowLargeGroupsAttribute = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueString(qualifiedParameterNamespace + "allowLargeGroupsAttribute", "");
+					LOG.debug("CMU Consumer - Setting allowLargeGroupsAttribute to {}", allowLargeGroupsAttribute);
+			
+			maxMembers = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueInt(qualifiedParameterNamespace + "maxMembers", 1000);
+					LOG.debug("CMU Consumer - Setting maxMembers to {}", maxMembers);
+			
+			syncAttribute = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueStringRequired(qualifiedParameterNamespace + "syncAttribute");
+					LOG.debug("CMU Consumer - Setting syncAttribute to {}", syncAttribute);
+			   		
+			syncType = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueString(qualifiedParameterNamespace + "syncType", "basic");
+					LOG.debug("CMU Consumer - Setting syncType to {}", syncType);
+					
+			useXmlMessageFormat = 
+					GrouperLoaderConfig.retrieveConfig().propertyValueBoolean(qualifiedParameterNamespace + "useXmlMessageFormat", true);
+					LOG.debug("CMU Consumer - Setting useXmlMessageFormat to {}", useXmlMessageFormat);
+		
+			   				
+
+		} catch (Exception e) {
+			LOG.error("Error reading configuration values: " + e);
+		}
 	}
 
+	
 	public static String getBrokerUrl() {
-		readProperties();
 		return brokerURL;
 	}
 
 	public static String getUsername() {
-		readProperties();
 		return username;
 	}
 
 	public static String getPassword() {
-		readProperties();
 		return password;
 	}
 	
 	public static String getTargets() {
-		readProperties();
 		return targets;
 	}
 	
 	public static String getUsduExcludes() {
-		readProperties();
 		return usduExcludes;
 	}
 	
-	
-	private static void readProperties() {
-
-		// the properties file is only read for the first call
-		if (didReadProperties) {
-			return;
-		}
-
-		didReadProperties = true;
-		haveRequiredProperties = false;
-
-		try {
-			URL configURL;
-			Properties configValues;
-			
-			configURL = ConsumerProperties.class.getClassLoader().getResource(
-					configFile);
-			
-			
-			
-			if (configURL == null) {
-				log.error("CmuConsumer config file \"" + configFile
-						+ "\" not found");
-				return;
-			}
-			
-			configValues = new Properties();
-			configValues.load(configURL.openStream());
-			
-			haveRequiredProperties = true;
-
-			brokerURL = configValues.getProperty("brokerURL");
-			if (brokerURL == null) {
-				haveRequiredProperties = false;
-				log.error("brokerURL not found in properties file");
-			}
-
-			username = configValues.getProperty("username");
-			if (username == null) {
-				haveRequiredProperties = false;
-				log.error("username not found in properties file");
-			}
-
-			password = configValues.getProperty("password");
-			if (password == null) {
-				haveRequiredProperties = false;
-				log.error("password not found in properties file");
-			}
-			
-			targets = configValues.getProperty("targets");
-			if (targets == null) {
-				haveRequiredProperties = false;
-				log.error("targets not found in properties file");
-			}
-			
-			usduExcludes = configValues.getProperty("usduExcludes");
-			
-			log.info("Read ConsumerProperties config file \"" + configURL + "\" successfully");
-
-		} catch (Exception e) {
-			haveRequiredProperties = false;
-			log.error("Error reading " + configFile + ": " + e);
-		}
+	public static String getAllowLargeGroupsAttribute() {
+		       return allowLargeGroupsAttribute;
 	}
+	
+
+	public static int getMaxMembers() {
+		return maxMembers;
+	}
+
+	public static String getSyncAttribute() {
+		return syncAttribute;
+	}
+	
+	public static String getSyncType() {
+		return syncType;
+	}
+	
+	public static boolean getUseXmlMessageFormat() {
+		return useXmlMessageFormat;
+	}
+	
+
 	
 }

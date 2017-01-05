@@ -1,0 +1,17 @@
+
+<<<<<<< HEAD
+*.gz
+
+*.zip
+=======
+*.class
+
+*.gz
+
+*.zip
+
+*.html
+
+CMUChangeLogConsumer/lib/grouper/cmuConsumer.jar
+>>>>>>> add-check-for-attribute
+temp

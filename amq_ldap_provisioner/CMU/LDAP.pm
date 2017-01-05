@@ -34,6 +34,7 @@ my $_groupobjectclass;
 my $_personobjectclass;
 my $_cache;
 my $_env;
+my $_memberattribute;
 my $_dnattribute;
 my $_memberprefix;
 my $_groupprefix;
@@ -77,7 +78,7 @@ sub getGroupMembers {
 	$log->debug("Calling CMU::LDAP::getGroupMembers( self, ldapentry)");
 
 	my @members = ();
-	push( @members, $entry->get_value("member") );
+	push( @members, $entry->get_value( $self->{_memberattribute} ) );
 	return @members;
 }
 
@@ -184,11 +185,11 @@ sub removeGroupMember {
 	my $result;
 	my @attrs = ( $self->{_dnattribute});
 	my $entry =
-	  $self->getLdapEntry( "&(member=" . escape_filter_value($memberdn) . ")",
+	  $self->getLdapEntry( "&(" . $self->{_memberattribute} . "=" . escape_filter_value($memberdn) . ")",
 		\@attrs, $groupdn );
 
 	if ( defined $entry ) {
-		$entry->delete( 'member' => [$memberdn] );
+		$entry->delete( $self->{_memberattribute} => [$memberdn] );
 
 		my $result = $self->ldapUpdate($entry);
 
@@ -196,7 +197,7 @@ sub removeGroupMember {
 			if ( ldap_error_name( $result->code ) eq "LDAP_NO_SUCH_ATTRIBUTE" ) {
 				$log->info( "member "
 					  . $memberdn
-					  . "doesn't exist already in "
+					  . " doesn't exist already in "
 					  . $groupdn );
 			}
 			else {
@@ -450,11 +451,11 @@ sub addGroupMember {
 	my $result;
 	my @attrs = ( $self->{_dnattribute});
 	my $entry =
-	  $self->getLdapEntry( "!(member=" . escape_filter_value($memberdn) . ")",
+	  $self->getLdapEntry( "!(" . $self->{_memberattribute} . "=" . escape_filter_value($memberdn) . ")",
 		\@attrs, $groupdn );
 
 	if ( defined $entry ) {
-		$entry->add( 'member' => [$memberdn] );
+		$entry->add( $self->{_memberattribute} => [$memberdn] );
 
 		$result = $self->ldapUpdate($entry);
 
@@ -501,7 +502,7 @@ sub bulkGroupMemberAdd {
 		\@attrs, $groupdn );
 
 	if ( defined $entry ) {
-		$entry->add( 'member' => [@$memberdn]);
+		$entry->add( $self->{_memberattribute} => [@$memberdn]);
 
 		$result = $self->ldapUpdate($entry);
 		my $out = Dumper $memberdn;
@@ -550,7 +551,7 @@ sub bulkGroupMemberRemove {
 		\@attrs, $groupdn );
 
 	if ( defined $entry ) {
-		$entry->delete( 'member' => [@$memberdn] );
+		$entry->delete( $self->{_memberattribute} => [@$memberdn] );
 
 		my $result = $self->ldapUpdate($entry);
 		my $out    = Dumper $memberdn;
@@ -762,7 +763,20 @@ sub getLdapEntry {
 		}
 	}
 	else {
-		$entry = $result->pop_entry();
+		#$entry = $result->pop_entry();
+		#$entry = $result->entry(0);
+		while ($entry = $result->pop_entry()){
+			$log->debug("Heres the entry dn: ");
+			$log->debug($entry->dn);
+			$log->debug($dn);
+			if ( lc $entry->dn eq lc $dn) {
+				$log->debug ("The entry has the proper dn: $dn");
+				last;
+			} else {
+			 	$log->debug ("This dn isn't it: $entry->dn");
+				$entry = undef;
+			}
+		}
 
 		if ( defined $entry ) {
 			my $entrydn = $entry->get_value( $self->{_dnattribute} );

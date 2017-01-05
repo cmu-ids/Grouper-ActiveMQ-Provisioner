@@ -1,0 +1,31 @@
+dn: cn=All Users,ou=Groups,dc=example,dc=edu
+objectClass: groupofnames
+objectClass: top
+cn: All Users
+member: uid=jsmith,ou=people,dc=example,dc=edu
+
+dn: cn=All Users Plus,ou=Groups,dc=example,dc=edu
+objectClass: groupofnames
+objectClass: top
+cn: All Users Plus
+member: uid=jsmith,ou=people,dc=example,dc=edu
+
+
+#Good account
+dn: uid=jsmith,ou=People,dc=example,dc=edu
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: inetUser
+objectClass: passwordObject
+objectClass: berkeleyEduPerson
+givenName: Joe
+uid: jsmith
+sn: Smith
+cn: John Smith
+mail: jsmith@example.edu
+memberOf: cn=All Users,ou=Groups,dc=example,dc=edu
+berkeleyEduIsMemberOf: cn=All Users,ou=Groups,dc=example,dc=edu
+berkeleyEduIsMemberOf: cn=All Users Plus,ou=Groups,dc=example,dc=edu
+userPassword: password
