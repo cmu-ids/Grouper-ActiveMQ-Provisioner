@@ -370,7 +370,7 @@ public class ConsumerMain extends ChangeLogConsumerBase {
 		mesg = mesg + "<description><![CDATA[" + groupDescription
 				+ "]]></description>";
 		mesg = mesg + "<olddescription><![CDATA[" + groupOldDescription
-				+ "</olddescription>";
+				+ "]]></olddescription>";
 		return mesg;
 	}
 
